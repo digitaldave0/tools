@@ -1,21 +1,13 @@
-const admin = require('firebase-admin');
+const { createClient } = require('@supabase/supabase-js');
 
-let serviceAccount;
-try {
-  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-} catch (error) {
-  console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY:', error);
-  serviceAccount = null;
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error('Missing Supabase environment variables');
 }
 
-if (!admin.apps.length && serviceAccount) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    storageBucket: 'netlify-jump-box.appspot.com'
-  });
-}
-
-const bucket = admin.apps.length ? admin.storage().bucket() : null;
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 exports.handler = async (event, context) => {
   if (event.httpMethod !== 'GET') {
@@ -25,10 +17,10 @@ exports.handler = async (event, context) => {
     };
   }
 
-  if (!bucket) {
+  if (!supabase) {
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: 'Firebase not initialized. Check FIREBASE_SERVICE_ACCOUNT_KEY environment variable.' })
+      body: JSON.stringify({ error: 'Supabase not initialized. Check SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables.' })
     };
   }
 
@@ -42,8 +34,13 @@ exports.handler = async (event, context) => {
 
   try {
     // List files with prefix to find the file
-    const [files] = await bucket.getFiles({ prefix: `uploads/${fileId}-` });
-    if (files.length === 0) {
+    const { data: files, error } = await supabase.storage
+      .from('files')
+      .list('uploads', {
+        search: fileId
+      });
+
+    if (error || !files || files.length === 0) {
       return {
         statusCode: 404,
         body: JSON.stringify({ error: 'File not found' })
@@ -51,25 +48,25 @@ exports.handler = async (event, context) => {
     }
 
     const file = files[0];
+    const filePath = `uploads/${file.name}`;
 
-    // Generate a signed URL for download (valid for 1 hour)
-    const [url] = await file.getSignedUrl({
-      action: 'read',
-      expires: Date.now() + 60 * 60 * 1000, // 1 hour
-    });
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from('files')
+      .getPublicUrl(filePath);
 
     return {
       statusCode: 200,
       body: JSON.stringify({
-        downloadUrl: url,
-        fileName: file.name.split('/').pop().split('-').slice(1).join('-') // Extract original filename
+        downloadUrl: urlData.publicUrl,
+        fileName: file.name.split('-').slice(1).join('-') // Extract original filename
       })
     };
   } catch (error) {
     console.error('Download error:', error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: 'Download failed' })
+      body: JSON.stringify({ error: 'Download failed: ' + error.message })
     };
   }
-};
+};;

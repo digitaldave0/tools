@@ -1,22 +1,14 @@
-const admin = require('firebase-admin');
+const { createClient } = require('@supabase/supabase-js');
 const Busboy = require('busboy');
 
-let serviceAccount;
-try {
-  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-} catch (error) {
-  console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY:', error);
-  serviceAccount = null;
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error('Missing Supabase environment variables');
 }
 
-if (!admin.apps.length && serviceAccount) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    storageBucket: 'netlify-jump-box.appspot.com'
-  });
-}
-
-const bucket = admin.apps.length ? admin.storage().bucket() : null;
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 exports.handler = (event, context) => {
   if (event.httpMethod !== 'POST') {
@@ -26,10 +18,10 @@ exports.handler = (event, context) => {
     };
   }
 
-  if (!bucket) {
+  if (!supabase) {
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: 'Firebase not initialized. Check FIREBASE_SERVICE_ACCOUNT_KEY environment variable.' })
+      body: JSON.stringify({ error: 'Supabase not initialized. Check SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables.' })
     };
   }
 
@@ -51,33 +43,42 @@ exports.handler = (event, context) => {
       try {
         const fileId = Date.now() + '-' + Math.random().toString(36).substring(2);
         const filePath = `uploads/${fileId}-${fileName}`;
-        const fileUpload = bucket.file(filePath);
 
-        await fileUpload.save(fileBuffer, {
-          metadata: {
+        // Upload to Supabase Storage
+        const { data, error } = await supabase.storage
+          .from('files') // You'll need to create this bucket in Supabase
+          .upload(filePath, fileBuffer, {
             contentType: mimeType,
-          },
-        });
+            upsert: false
+          });
 
-        // Generate a signed URL for download (valid for 1 hour)
-        const [url] = await fileUpload.getSignedUrl({
-          action: 'read',
-          expires: Date.now() + 60 * 60 * 1000, // 1 hour
-        });
+        if (error) {
+          console.error('Supabase upload error:', error);
+          resolve({
+            statusCode: 500,
+            body: JSON.stringify({ error: 'Upload failed: ' + error.message })
+          });
+          return;
+        }
+
+        // Get public URL (assuming bucket is public)
+        const { data: urlData } = supabase.storage
+          .from('files')
+          .getPublicUrl(filePath);
 
         resolve({
           statusCode: 200,
           body: JSON.stringify({
             message: 'File uploaded successfully',
             fileId: fileId,
-            downloadUrl: url
+            downloadUrl: urlData.publicUrl
           })
         });
       } catch (error) {
         console.error('Upload error:', error);
         resolve({
           statusCode: 500,
-          body: JSON.stringify({ error: 'Upload failed' })
+          body: JSON.stringify({ error: 'Upload failed: ' + error.message })
         });
       }
     });

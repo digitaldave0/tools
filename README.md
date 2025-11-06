@@ -12,12 +12,16 @@ A serverless API for uploading and downloading files using Firebase Storage.
 - Simple web interface at `index.html`
 
 ### Setup
-1. Install dependencies: `npm install`
-2. Set environment variable in Netlify: `FIREBASE_SERVICE_ACCOUNT_KEY` with the full JSON service account key
-3. Deploy to Netlify: `netlify deploy` or connect to GitHub for auto-deploy
+1. Create a free Supabase account at https://supabase.com
+2. Create a new project
+3. Go to Settings → API to get your project URL and service role key
+4. In Supabase Dashboard → Storage, create a new bucket called "files" and make it public
+5. Install dependencies: `npm install`
+6. Set environment variables in Netlify: `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`
+7. Deploy to Netlify: `netlify deploy` or connect to GitHub for auto-deploy
 
 ### Security Note
-The Firebase service account key is stored as a Netlify environment variable `FIREBASE_SERVICE_ACCOUNT_KEY` for security.
+The Supabase service role key is stored as Netlify environment variables for security.
 
 ### Usage
 - Open `index.html` in a browser
