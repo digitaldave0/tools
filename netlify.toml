@@ -1,0 +1,3 @@
+[build]
+  publish = "netify-python-api"
+  functions = "netify-python-api/netlify/functions"
