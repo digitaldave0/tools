@@ -33,21 +33,28 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    // List files with prefix to find the file
+    // List files in uploads folder and find the one matching fileId
     const { data: files, error } = await supabase.storage
       .from('files')
-      .list('uploads', {
-        search: fileId
-      });
+      .list('uploads');
 
-    if (error || !files || files.length === 0) {
+    if (error || !files) {
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ error: 'Failed to list files' })
+      };
+    }
+
+    // Find file that starts with the fileId
+    const file = files.find(f => f.name.startsWith(fileId + '-'));
+
+    if (!file) {
       return {
         statusCode: 404,
         body: JSON.stringify({ error: 'File not found' })
       };
     }
 
-    const file = files[0];
     const filePath = `uploads/${file.name}`;
 
     // Get public URL
@@ -55,11 +62,14 @@ exports.handler = async (event, context) => {
       .from('files')
       .getPublicUrl(filePath);
 
+    // Extract original filename (everything after the first dash after fileId)
+    const originalFileName = file.name.split('-').slice(1).join('-');
+
     return {
       statusCode: 200,
       body: JSON.stringify({
         downloadUrl: urlData.publicUrl,
-        fileName: file.name.split('-').slice(1).join('-') // Extract original filename
+        fileName: originalFileName
       })
     };
   } catch (error) {
