@@ -1,25 +1,35 @@
 const admin = require('firebase-admin');
 const Busboy = require('busboy');
-const path = require('path');
-const os = require('os');
-const fs = require('fs');
 
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+let serviceAccount;
+try {
+  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+} catch (error) {
+  console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY:', error);
+  serviceAccount = null;
+}
 
-if (!admin.apps.length) {
+if (!admin.apps.length && serviceAccount) {
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
     storageBucket: 'netlify-jump-box.appspot.com'
   });
 }
 
-const bucket = admin.storage().bucket();
+const bucket = admin.apps.length ? admin.storage().bucket() : null;
 
 exports.handler = (event, context) => {
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
       body: JSON.stringify({ error: 'Method not allowed' })
+    };
+  }
+
+  if (!bucket) {
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: 'Firebase not initialized. Check FIREBASE_SERVICE_ACCOUNT_KEY environment variable.' })
     };
   }
 
