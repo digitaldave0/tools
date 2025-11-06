@@ -15,6 +15,7 @@
         .main-content {
             display: flex;
             gap: 20px;
+            align-items: flex-start;
         }
         .left-panel {
             flex: 1;
@@ -22,6 +23,8 @@
         .right-panel {
             flex: 1;
             min-width: 400px;
+            max-height: 100vh;
+            overflow-y: auto;
         }
         .upload-section, .download-section, .cleanup-section {
             margin-bottom: 30px;
@@ -40,10 +43,20 @@
             border-radius: 5px;
             margin-bottom: 20px;
             text-align: center;
+            max-width: 300px;
+            margin-left: auto;
+            margin-right: auto;
         }
         .chart-section h3 {
             margin-top: 0;
             color: #333;
+            font-size: 16px;
+        }
+        .chart-container {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            margin: 0 auto;
         }
         .storage-info {
             margin-top: 10px;
@@ -145,7 +158,9 @@
         <div class="right-panel">
             <div class="chart-section">
                 <h3>Storage Usage (500MB Free)</h3>
-                <canvas id="storageChart" width="200" height="200"></canvas>
+                <div class="chart-container">
+                    <canvas id="storageChart"></canvas>
+                </div>
                 <div id="storageStats" class="storage-info"></div>
             </div>
 
@@ -397,13 +412,17 @@
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false,
+                    maintainAspectRatio: true,
+                    aspectRatio: 1,
                     plugins: {
                         legend: {
                             position: 'bottom',
                             labels: {
-                                padding: 20,
-                                usePointStyle: true
+                                padding: 10,
+                                usePointStyle: true,
+                                font: {
+                                    size: 12
+                                }
                             }
                         },
                         tooltip: {
@@ -414,6 +433,12 @@
                                     return `${label}: ${formatBytes(value)}`;
                                 }
                             }
+                        }
+                    },
+                    layout: {
+                        padding: {
+                            top: 10,
+                            bottom: 10
                         }
                     }
                 }
