@@ -1,3 +1,7 @@
 [build]
   publish = "netify-python-api"
   functions = "netify-python-api/netlify/functions"
+
+[build.environment]
+  SUPABASE_URL = "https://fwulnbumlxeenejsursp.supabase.co"
+  SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3dWxuYnVtbHhlZW5lanN1cnNwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MjQ0MjU4MywiZXhwIjoyMDc4MDE4NTgzfQ.BSAFBB2Uvvx6E0ufTHeuiBafIh76kJEQp-IR38fY5l4"

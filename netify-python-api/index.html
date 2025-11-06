@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>File Upload/Download API</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -21,6 +22,81 @@
             align-items: flex-start;
             max-width: 1200px;
             margin: 0 auto;
+        }
+        .auth-section {
+            max-width: 400px;
+            margin: 50px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .auth-section h2 {
+            margin-bottom: 20px;
+            color: #1f2937;
+        }
+        .auth-section input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .auth-section input:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+        .auth-section .auth-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .auth-section button {
+            flex: 1;
+            padding: 12px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .auth-section button:hover {
+            background: #1d4ed8;
+        }
+        .auth-section .toggle-auth {
+            margin-top: 15px;
+            color: #6b7280;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+        .user-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .user-info button {
+            background: #dc2626;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .user-info button:hover {
+            background: #b91c1c;
         }
         .left-panel {
             flex: 1;
@@ -401,7 +477,29 @@
 <body>
     <h1>File Upload/Download API</h1>
 
-    <div class="main-content">
+    <!-- Authentication Section -->
+    <div id="auth-section" class="auth-section">
+        <h2 id="auth-title">Sign In</h2>
+        <input type="email" id="emailInput" placeholder="Email address" required>
+        <input type="password" id="passwordInput" placeholder="Password" required>
+        <div class="auth-buttons">
+            <button onclick="signIn()">Sign In</button>
+            <button onclick="signUp()">Sign Up</button>
+        </div>
+        <div id="authResult" class="result" style="display: none;"></div>
+        <div class="toggle-auth" onclick="toggleAuthMode()">
+            <span id="toggle-text">Need an account? Sign up instead</span>
+        </div>
+    </div>
+
+    <!-- Main App (hidden until authenticated) -->
+    <div id="main-app" style="display: none;">
+        <div class="user-info" id="user-info">
+            <span id="user-email"></span>
+            <button onclick="signOut()">Sign Out</button>
+        </div>
+
+        <div class="main-content">
         <div class="left-panel">
             <div class="upload-section">
                 <h2>Upload File (Encrypted)</h2>
@@ -465,9 +563,26 @@
                 <div id="filesResult" class="result" style="display: none;"></div>
             </div>
         </div>
-    </div>
+    </div> <!-- End main-app -->
 
     <script>
+        // Initialize Supabase client
+        const supabaseUrl = process.env.SUPABASE_URL || 'https://fwulnbumlxeenejsursp.supabase.co';
+        const supabaseKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3dWxuYnVtbHhlZW5lanN1cnNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0NDI1ODMsImV4cCI6MjA3ODAxODU4M30.R5GagffWYBapbDnwAoP-bGEG0kI9cBoSULDkS_JFEmE';
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        // DOM elements
+        const authSection = document.getElementById('auth-section');
+        const mainApp = document.getElementById('main-app');
+        const userInfo = document.getElementById('user-info');
+        const userEmail = document.getElementById('user-email');
+        const authTitle = document.getElementById('auth-title');
+        const toggleText = document.getElementById('toggle-text');
+        const emailInput = document.getElementById('emailInput');
+        const passwordInput = document.getElementById('passwordInput');
+        const authResult = document.getElementById('authResult');
+
+        // Existing DOM elements
         const uploadForm = document.getElementById('uploadForm');
         const fileInput = document.getElementById('fileInput');
         const uploadResult = document.getElementById('uploadResult');
@@ -479,6 +594,125 @@
         const storageStats = document.getElementById('storageStats');
 
         let storageChart;
+        let isSignUpMode = false;
+
+        // Authentication functions
+        async function signIn() {
+            const email = emailInput.value.trim();
+            const password = passwordInput.value.trim();
+
+            if (!email || !password) {
+                showAuthResult('Please enter both email and password', 'error');
+                return;
+            }
+
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+
+                if (error) {
+                    showAuthResult(error.message, 'error');
+                } else {
+                    showAuthResult('Sign in successful!', 'success');
+                    onAuthStateChange(data.user);
+                }
+            } catch (error) {
+                showAuthResult('Sign in failed: ' + error.message, 'error');
+            }
+        }
+
+        async function signUp() {
+            const email = emailInput.value.trim();
+            const password = passwordInput.value.trim();
+
+            if (!email || !password) {
+                showAuthResult('Please enter both email and password', 'error');
+                return;
+            }
+
+            if (password.length < 6) {
+                showAuthResult('Password must be at least 6 characters', 'error');
+                return;
+            }
+
+            try {
+                const { data, error } = await supabase.auth.signUp({
+                    email: email,
+                    password: password
+                });
+
+                if (error) {
+                    showAuthResult(error.message, 'error');
+                } else {
+                    showAuthResult('Account created! Please check your email to confirm your account.', 'success');
+                }
+            } catch (error) {
+                showAuthResult('Sign up failed: ' + error.message, 'error');
+            }
+        }
+
+        async function signOut() {
+            try {
+                const { error } = await supabase.auth.signOut();
+                if (error) {
+                    console.error('Sign out error:', error);
+                } else {
+                    onAuthStateChange(null);
+                }
+            } catch (error) {
+                console.error('Sign out failed:', error);
+            }
+        }
+
+        function toggleAuthMode() {
+            isSignUpMode = !isSignUpMode;
+            authTitle.textContent = isSignUpMode ? 'Sign Up' : 'Sign In';
+            toggleText.textContent = isSignUpMode ?
+                'Already have an account? Sign in instead' :
+                'Need an account? Sign up instead';
+        }
+
+        function showAuthResult(message, type) {
+            authResult.textContent = message;
+            authResult.className = `result ${type}`;
+            authResult.style.display = 'block';
+        }
+
+        function onAuthStateChange(user) {
+            if (user) {
+                // User is signed in
+                authSection.style.display = 'none';
+                mainApp.style.display = 'block';
+                userEmail.textContent = user.email;
+
+                // Load user data
+                refreshFiles();
+                loadStorageStats();
+            } else {
+                // User is signed out
+                authSection.style.display = 'block';
+                mainApp.style.display = 'none';
+                userEmail.textContent = '';
+
+                // Clear form
+                emailInput.value = '';
+                passwordInput.value = '';
+                authResult.style.display = 'none';
+            }
+        }
+
+        // Check initial auth state
+        async function checkAuthState() {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                onAuthStateChange(user);
+            } catch (error) {
+                console.error('Auth check failed:', error);
+                onAuthStateChange(null);
+            }
+        }
 
         // Encryption utilities
         async function generateEncryptionKey() {
@@ -561,8 +795,19 @@
                 const formData = new FormData();
                 formData.append('file', encryptedFile);
 
+                // Get the current session token
+                const { data: { session } } = await supabase.auth.getSession();
+                if (!session) {
+                    uploadResult.className = 'result error';
+                    uploadResult.textContent = 'Authentication required. Please sign in again.';
+                    return;
+                }
+
                 const response = await fetch('/.netlify/functions/upload', {
                     method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${session.access_token}`
+                    },
                     body: formData
                 });
 
@@ -604,7 +849,19 @@
             downloadResult.textContent = 'Downloading and decrypting file...';
 
             try {
-                const response = await fetch(`/.netlify/functions/download?fileId=${encodeURIComponent(fileId)}`);
+                // Get the current session token
+                const { data: { session } } = await supabase.auth.getSession();
+                if (!session) {
+                    downloadResult.className = 'result error';
+                    downloadResult.textContent = 'Authentication required. Please sign in again.';
+                    return;
+                }
+
+                const response = await fetch(`/.netlify/functions/download?fileId=${encodeURIComponent(fileId)}`, {
+                    headers: {
+                        'Authorization': `Bearer ${session.access_token}`
+                    }
+                });
                 const result = await response.json();
 
                 if (response.ok) {
@@ -666,8 +923,19 @@
 
         async function cleanupFiles() {
             try {
+                // Get the current session token
+                const { data: { session } } = await supabase.auth.getSession();
+                if (!session) {
+                    cleanupResult.className = 'result error';
+                    cleanupResult.textContent = 'Authentication required. Please sign in again.';
+                    return;
+                }
+
                 const response = await fetch('/.netlify/functions/cleanup', {
-                    method: 'POST'
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${session.access_token}`
+                    }
                 });
                 const result = await response.json();
 
@@ -697,7 +965,18 @@
             try {
                 filesTableBody.innerHTML = '<tr><td colspan="4">Loading files...</td></tr>';
 
-                const response = await fetch('/.netlify/functions/list-files');
+                // Get the current session token
+                const { data: { session } } = await supabase.auth.getSession();
+                if (!session) {
+                    filesTableBody.innerHTML = '<tr><td colspan="4">Please sign in to view files</td></tr>';
+                    return;
+                }
+
+                const response = await fetch('/.netlify/functions/list-files', {
+                    headers: {
+                        'Authorization': `Bearer ${session.access_token}`
+                    }
+                });
                 const result = await response.json();
 
                 if (response.ok) {
@@ -761,13 +1040,23 @@
 
         // Load files when page loads
         document.addEventListener('DOMContentLoaded', () => {
-            refreshFiles();
-            loadStorageStats();
+            checkAuthState();
         });
 
         async function loadStorageStats() {
             try {
-                const response = await fetch('/.netlify/functions/storage-stats');
+                // Get the current session token
+                const { data: { session } } = await supabase.auth.getSession();
+                if (!session) {
+                    storageStats.textContent = 'Please sign in to view storage stats';
+                    return;
+                }
+
+                const response = await fetch('/.netlify/functions/storage-stats', {
+                    headers: {
+                        'Authorization': `Bearer ${session.access_token}`
+                    }
+                });
                 const result = await response.json();
 
                 if (response.ok) {

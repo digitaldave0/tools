@@ -25,10 +25,31 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    // List all files in uploads folder
+    // Validate user authentication
+    const authHeader = event.headers.authorization || event.headers.Authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return {
+        statusCode: 401,
+        body: JSON.stringify({ error: 'Unauthorized: No authentication token provided' })
+      };
+    }
+
+    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+
+    // Verify the JWT token
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+    if (authError || !user) {
+      return {
+        statusCode: 401,
+        body: JSON.stringify({ error: 'Unauthorized: Invalid authentication token' })
+      };
+    }
+
+    // List files in user's uploads folder
     const { data: files, error } = await supabase.storage
       .from('files')
-      .list('uploads');
+      .list(`uploads/${user.id}`);
 
     if (error || !files) {
       return {
@@ -46,7 +67,7 @@ exports.handler = async (event, context) => {
       const expiresAt = file.metadata?.expiresAt ? parseInt(file.metadata.expiresAt) : null;
 
       if (expiresAt && now > expiresAt) {
-        expiredFiles.push(`uploads/${file.name}`);
+        expiredFiles.push(`uploads/${user.id}/${file.name}`);
       } else {
         validFiles.push({
           name: file.name,
