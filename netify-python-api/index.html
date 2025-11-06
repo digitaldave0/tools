@@ -7,10 +7,12 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            max-width: 1200px;
-            margin: 0 auto;
+            font-family: 'Courier New', monospace;
+            background: #0a0a0a;
+            color: #00ff00;
+            margin: 0;
             padding: 20px;
+            min-height: 100vh;
         }
         .main-content {
             display: flex;
@@ -19,29 +21,34 @@
         }
         .left-panel {
             flex: 1;
+            border: 2px solid #00ff00;
+            background: rgba(0, 255, 0, 0.05);
         }
         .right-panel {
             flex: 1;
             min-width: 400px;
             max-height: 100vh;
             overflow-y: auto;
+            border: 2px solid #00ff00;
+            background: rgba(0, 255, 0, 0.05);
         }
         .upload-section, .download-section, .cleanup-section {
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             padding: 20px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
+            border: 1px solid #00ff00;
+            background: rgba(0, 20, 0, 0.8);
         }
         .files-section {
             padding: 20px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
+            border: 1px solid #00ff00;
+            background: rgba(0, 20, 0, 0.8);
         }
         .chart-section {
             padding: 20px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
+            border: 1px solid #00ff00;
+            border-radius: 0;
             margin-bottom: 20px;
+            background: rgba(0, 20, 0, 0.8);
             text-align: center;
             max-width: 300px;
             margin-left: auto;
@@ -49,83 +56,169 @@
         }
         .chart-section h3 {
             margin-top: 0;
-            color: #333;
+            color: #00ff00;
             font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-bottom: 1px solid #00ff00;
+            padding-bottom: 5px;
         }
         .chart-container {
             position: relative;
             width: 200px;
             height: 200px;
             margin: 0 auto;
+            border: 1px solid #00ff00;
+            background: rgba(0, 0, 0, 0.5);
         }
         .storage-info {
             margin-top: 10px;
-            font-size: 14px;
-            color: #666;
+            font-size: 12px;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+        }
+        h1 {
+            text-align: center;
+            color: #00ff00;
+            font-size: 28px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 30px;
+            text-shadow: 0 0 10px #00ff00;
+            border-bottom: 2px solid #00ff00;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #00ff00;
+            font-size: 18px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 15px;
+            border-left: 4px solid #00ff00;
+            padding-left: 10px;
+        }
+        input[type="file"], input[type="text"] {
+            background: #000;
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            padding: 8px;
+            font-family: 'Courier New', monospace;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        input[type="file"]::file-selector-button {
+            background: #00ff00;
+            color: #000;
+            border: none;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+        button {
+            background: #00ff00;
+            color: #000;
+            border: 2px solid #00ff00;
+            padding: 10px 20px;
+            font-family: 'Courier New', monospace;
+            text-transform: uppercase;
+            font-weight: bold;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        button:hover {
+            background: #000;
+            color: #00ff00;
+            box-shadow: 0 0 10px #00ff00;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid #00ff00;
+            background: rgba(0, 40, 0, 0.9);
+            font-family: 'Courier New', monospace;
+        }
+        .error {
+            border-color: #ff4444;
+            background: rgba(40, 0, 0, 0.9);
+            color: #ff4444;
+        }
+        .success {
+            border-color: #00ff00;
+            background: rgba(0, 40, 0, 0.9);
+            color: #00ff00;
         }
         .files-table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 10px;
+            border: 1px solid #00ff00;
         }
         .files-table th, .files-table td {
             padding: 8px 12px;
             text-align: left;
-            border-bottom: 1px solid #ddd;
+            border-bottom: 1px solid #00ff00;
+            border-right: 1px solid #00ff00;
         }
         .files-table th {
-            background-color: #f8f9fa;
+            background: rgba(0, 255, 0, 0.1);
+            color: #00ff00;
             font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .files-table tr:hover {
+            background: rgba(0, 255, 0, 0.05);
         }
         .file-id {
-            font-family: monospace;
+            font-family: 'Courier New', monospace;
             font-size: 12px;
-            color: #666;
+            color: #00ff00;
             word-break: break-all;
         }
         .copy-btn {
             background: none;
-            border: none;
-            color: #007bff;
+            border: 1px solid #00ff00;
+            color: #00ff00;
             cursor: pointer;
-            text-decoration: underline;
-            font-size: 12px;
+            text-decoration: none;
+            font-size: 11px;
+            padding: 4px 8px;
+            font-family: 'Courier New', monospace;
+            text-transform: uppercase;
+            margin-right: 5px;
+            transition: all 0.3s;
         }
         .copy-btn:hover {
-            color: #0056b3;
+            background: #00ff00;
+            color: #000;
+            box-shadow: 0 0 5px #00ff00;
         }
-        input[type="file"] {
-            margin: 10px 0;
+        p {
+            color: #00ff00;
+            font-size: 12px;
+            line-height: 1.4;
         }
-        button {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
+        a {
+            color: #00ff00;
+            text-decoration: none;
+            border-bottom: 1px dotted #00ff00;
         }
-        button:hover {
-            background-color: #0056b3;
+        a:hover {
+            color: #ffffff;
+            border-bottom-color: #ffffff;
         }
-        .result {
-            margin-top: 10px;
-            padding: 10px;
-            background-color: #f8f9fa;
-            border-radius: 5px;
-        }
-        .error {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
-        .success {
-            background-color: #d4edda;
-            color: #155724;
+        small {
+            font-size: 10px;
+            color: #00aa00;
         }
     </style>
 </head>
 <body>
-    <h1>File Upload/Download API</h1>
+    <h1>SECURE FILE TRANSFER TERMINAL</h1>
 
     <div class="main-content">
         <div class="left-panel">
@@ -137,33 +230,33 @@
                 <form id="uploadForm">
                     <input type="file" id="fileInput" required>
                     <br>
-                    <button type="submit">Encrypt & Upload</button>
+                            <button id="uploadBtn">INITIATE SECURE UPLOAD</button>
                 </form>
                 <div id="uploadResult" class="result" style="display: none;"></div>
             </div>
 
             <div class="download-section">
-                <h2>Download File (Decrypted)</h2>
+                <h2>SECURE FILE RETRIEVAL</h2>
                 <p style="font-size: 14px; color: #666; margin-bottom: 10px;">
                     Files are decrypted client-side. You'll need the encryption key to download.
                 </p>
                 <input type="text" id="fileIdInput" placeholder="Enter File ID" required>
                 <br>
-                <button onclick="downloadFile()">Decrypt & Download</button>
+                                <button onclick="downloadFile()">EXECUTE DECRYPTION & DOWNLOAD</button>
                 <div id="downloadResult" class="result" style="display: none;"></div>
             </div>
 
             <div class="cleanup-section">
-                <h2>Storage Management</h2>
-                <p>Files expire after 24 hours. Use cleanup to remove expired files.</p>
-                <button onclick="cleanupFiles()">Clean Up Expired Files</button>
+                <h2>STORAGE MANAGEMENT CONSOLE</h2>
+                    <p>Military-grade encrypted file sharing with automatic expiration and storage monitoring</p>
+                <button onclick="cleanupFiles()">INITIATE CLEANUP PROTOCOL</button>
                 <div id="cleanupResult" class="result" style="display: none;"></div>
             </div>
         </div>
 
         <div class="right-panel">
             <div class="chart-section">
-                <h3>Storage Usage (500MB Free)</h3>
+                <h3>STORAGE UTILIZATION MATRIX</h3>
                 <div class="chart-container">
                     <canvas id="storageChart"></canvas>
                 </div>
@@ -171,15 +264,15 @@
             </div>
 
             <div class="files-section">
-                <h2>Available Files</h2>
-                <button onclick="refreshFiles()">Refresh List</button>
+                <h2>ACTIVE FILES DATABASE</h2>
+                <button onclick="refreshFiles()">REFRESH INTEL</button>
                 <table class="files-table" id="filesTable">
                     <thead>
                         <tr>
-                            <th>File Name</th>
-                            <th>File ID</th>
-                            <th>Expires</th>
-                            <th>Action</th>
+                            <th>FILE NAME</th>
+                            <th>FILE ID</th>
+                            <th>EXPIRATION</th>
+                            <th>OPERATIONS</th>
                         </tr>
                     </thead>
                     <tbody id="filesTableBody">
@@ -461,8 +554,8 @@
                         <td><span class="file-id">${file.fileId}</span></td>
                         <td>${expiresText}</td>
                         <td>
-                            <button class="copy-btn" onclick="copyToClipboard('${file.fileId}')">Copy ID</button>
-                            ${!file.isExpired ? `<button class="copy-btn" onclick="downloadFileById('${file.fileId}')">Download</button>` : ''}
+                            <button class="copy-btn" onclick="copyToClipboard('${file.fileId}')">COPY ID</button>
+                            ${!file.isExpired ? `<button class="copy-btn" onclick="downloadFileById('${file.fileId}')">RETRIEVE</button>` : ''}
                         </td>
                     </tr>
                 `;
@@ -516,8 +609,8 @@
                 storageChart.destroy();
             }
 
-            const usedColor = data.usedPercentage > 80 ? '#dc3545' : '#007bff';
-            const remainingColor = '#28a745';
+            const usedColor = data.usedPercentage > 80 ? '#ff4444' : '#00ff00';
+            const remainingColor = '#004400';
 
             storageChart = new Chart(ctx, {
                 type: 'pie',
