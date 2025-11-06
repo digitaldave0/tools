@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>File Upload/Download API</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -32,6 +33,22 @@
             padding: 20px;
             border: 1px solid #ddd;
             border-radius: 5px;
+        }
+        .chart-section {
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .chart-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .storage-info {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
         }
         .files-table {
             width: 100%;
@@ -126,6 +143,12 @@
         </div>
 
         <div class="right-panel">
+            <div class="chart-section">
+                <h3>Storage Usage (500MB Free)</h3>
+                <canvas id="storageChart" width="200" height="200"></canvas>
+                <div id="storageStats" class="storage-info"></div>
+            </div>
+
             <div class="files-section">
                 <h2>Available Files</h2>
                 <button onclick="refreshFiles()">Refresh List</button>
@@ -158,6 +181,9 @@
         const cleanupResult = document.getElementById('cleanupResult');
         const filesTableBody = document.getElementById('filesTableBody');
         const filesResult = document.getElementById('filesResult');
+        const storageStats = document.getElementById('storageStats');
+
+        let storageChart;
 
         uploadForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -183,6 +209,9 @@
                         Expires: 24 hours from now<br>
                         <a href="${result.downloadUrl}" target="_blank">Direct Download Link</a>
                     `;
+                    // Refresh file list and storage stats
+                    refreshFiles();
+                    loadStorageStats();
                 } else {
                     uploadResult.className = 'result error';
                     uploadResult.textContent = `Error: ${result.error}`;
@@ -245,8 +274,9 @@
                         ${result.message}<br>
                         Remaining files: ${result.remainingFiles}
                     `;
-                    // Refresh the file list after cleanup
+                    // Refresh the file list and storage stats after cleanup
                     refreshFiles();
+                    loadStorageStats();
                 } else {
                     cleanupResult.className = 'result error';
                     cleanupResult.textContent = `Error: ${result.error}`;
@@ -321,7 +351,89 @@
         }
 
         // Load files when page loads
-        document.addEventListener('DOMContentLoaded', refreshFiles);
+        document.addEventListener('DOMContentLoaded', () => {
+            refreshFiles();
+            loadStorageStats();
+        });
+
+        async function loadStorageStats() {
+            try {
+                const response = await fetch('/.netlify/functions/storage-stats');
+                const result = await response.json();
+
+                if (response.ok) {
+                    updateStorageChart(result);
+                } else {
+                    console.error('Failed to load storage stats:', result.error);
+                    storageStats.textContent = 'Unable to load storage stats';
+                }
+            } catch (error) {
+                console.error('Error loading storage stats:', error);
+                storageStats.textContent = 'Unable to load storage stats';
+            }
+        }
+
+        function updateStorageChart(data) {
+            const ctx = document.getElementById('storageChart').getContext('2d');
+
+            // Destroy existing chart if it exists
+            if (storageChart) {
+                storageChart.destroy();
+            }
+
+            const usedColor = data.usedPercentage > 80 ? '#dc3545' : '#007bff';
+            const remainingColor = '#28a745';
+
+            storageChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['Used Space', 'Remaining Space'],
+                    datasets: [{
+                        data: [data.totalSize, data.remainingSize],
+                        backgroundColor: [usedColor, remainingColor],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                usePointStyle: true
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    return `${label}: ${formatBytes(value)}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Update storage info text
+            storageStats.innerHTML = `
+                <strong>${data.formatted.used}</strong> of <strong>${data.formatted.max}</strong> used<br>
+                <strong>${data.formatted.remaining}</strong> remaining (${data.usedPercentage}% used)<br>
+                <small>${data.fileCount} files stored</small>
+            `;
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
     </script>
 </body>
 </html>
