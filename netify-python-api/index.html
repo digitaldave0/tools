@@ -11,7 +11,7 @@
             margin: 0 auto;
             padding: 20px;
         }
-        .upload-section, .download-section {
+        .upload-section, .download-section, .cleanup-section {
             margin-bottom: 30px;
             padding: 20px;
             border: 1px solid #ddd;
@@ -68,12 +68,20 @@
         <div id="downloadResult" class="result" style="display: none;"></div>
     </div>
 
+    <div class="cleanup-section">
+        <h2>Storage Management</h2>
+        <p>Files expire after 24 hours. Use cleanup to remove expired files.</p>
+        <button onclick="cleanupFiles()">Clean Up Expired Files</button>
+        <div id="cleanupResult" class="result" style="display: none;"></div>
+    </div>
+
     <script>
         const uploadForm = document.getElementById('uploadForm');
         const fileInput = document.getElementById('fileInput');
         const uploadResult = document.getElementById('uploadResult');
         const fileIdInput = document.getElementById('fileIdInput');
         const downloadResult = document.getElementById('downloadResult');
+        const cleanupResult = document.getElementById('cleanupResult');
 
         uploadForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -96,6 +104,7 @@
                     uploadResult.innerHTML = `
                         <strong>Upload successful!</strong><br>
                         File ID: ${result.fileId}<br>
+                        Expires: 24 hours from now<br>
                         <a href="${result.downloadUrl}" target="_blank">Direct Download Link</a>
                     `;
                 } else {
@@ -125,9 +134,13 @@
                 downloadResult.style.display = 'block';
                 if (response.ok) {
                     downloadResult.className = 'result success';
+                    const expiresText = result.expiresAt ?
+                        `Expires: ${new Date(result.expiresAt).toLocaleString()}` :
+                        'Expiration: Unknown';
                     downloadResult.innerHTML = `
                         <strong>Download ready!</strong><br>
                         File: ${result.fileName}<br>
+                        ${expiresText}<br>
                         <a href="${result.downloadUrl}" target="_blank" download>Download File</a>
                     `;
                 } else {
@@ -138,6 +151,32 @@
                 downloadResult.style.display = 'block';
                 downloadResult.className = 'result error';
                 downloadResult.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        async function cleanupFiles() {
+            try {
+                const response = await fetch('/.netlify/functions/cleanup', {
+                    method: 'POST'
+                });
+                const result = await response.json();
+
+                cleanupResult.style.display = 'block';
+                if (response.ok) {
+                    cleanupResult.className = 'result success';
+                    cleanupResult.innerHTML = `
+                        <strong>Cleanup completed!</strong><br>
+                        ${result.message}<br>
+                        Remaining files: ${result.remainingFiles}
+                    `;
+                } else {
+                    cleanupResult.className = 'result error';
+                    cleanupResult.textContent = `Error: ${result.error}`;
+                }
+            } catch (error) {
+                cleanupResult.style.display = 'block';
+                cleanupResult.className = 'result error';
+                cleanupResult.textContent = `Error: ${error.message}`;
             }
         }
     </script>

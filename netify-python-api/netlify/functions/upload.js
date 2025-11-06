@@ -56,12 +56,18 @@ exports.handler = (event, context) => {
 
         console.log('Uploading file:', filePath, 'Size:', fileBuffer.length, 'Type:', mimeType);
 
-        // Upload to Supabase Storage
+        // Set expiration to 24 hours from now
+        const expirationTime = Date.now() + (24 * 60 * 60 * 1000); // 24 hours in milliseconds
+
+        // Upload to Supabase Storage with metadata
         const { data, error } = await supabase.storage
-          .from('files') // You'll need to create this bucket in Supabase
+          .from('files')
           .upload(filePath, fileBuffer, {
             contentType: mimeType,
-            upsert: false
+            upsert: false,
+            metadata: {
+              expiresAt: expirationTime.toString()
+            }
           });
 
         if (error) {

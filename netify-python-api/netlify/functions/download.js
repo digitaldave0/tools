@@ -55,6 +55,22 @@ exports.handler = async (event, context) => {
       };
     }
 
+    // Check if file has expired
+    const now = Date.now();
+    const expiresAt = file.metadata?.expiresAt ? parseInt(file.metadata.expiresAt) : null;
+
+    if (expiresAt && now > expiresAt) {
+      // File has expired, delete it
+      await supabase.storage
+        .from('files')
+        .remove([`uploads/${file.name}`]);
+
+      return {
+        statusCode: 410, // Gone
+        body: JSON.stringify({ error: 'File has expired and been deleted' })
+      };
+    }
+
     const filePath = `uploads/${file.name}`;
 
     // Get public URL
@@ -69,7 +85,8 @@ exports.handler = async (event, context) => {
       statusCode: 200,
       body: JSON.stringify({
         downloadUrl: urlData.publicUrl,
-        fileName: originalFileName
+        fileName: originalFileName,
+        expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null
       })
     };
   } catch (error) {
