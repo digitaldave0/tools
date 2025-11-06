@@ -32,8 +32,9 @@ exports.handler = (event, context) => {
     let mimeType = '';
 
     busboy.on('file', (fieldname, file, filename, encoding, mimetype) => {
-      fileName = filename;
-      mimeType = mimetype;
+      // Ensure filename is a string and handle cases where it might be undefined
+      fileName = (typeof filename === 'string' && filename) ? filename : 'uploaded-file';
+      mimeType = mimetype || 'application/octet-stream';
       file.on('data', (data) => {
         fileBuffer = Buffer.concat([fileBuffer, data]);
       });
@@ -41,8 +42,19 @@ exports.handler = (event, context) => {
 
     busboy.on('finish', async () => {
       try {
+        if (fileBuffer.length === 0) {
+          resolve({
+            statusCode: 400,
+            body: JSON.stringify({ error: 'No file data received' })
+          });
+          return;
+        }
+
         const fileId = Date.now() + '-' + Math.random().toString(36).substring(2);
-        const filePath = `uploads/${fileId}-${fileName}`;
+        const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_'); // Sanitize filename
+        const filePath = `uploads/${fileId}-${sanitizedFileName}`;
+
+        console.log('Uploading file:', filePath, 'Size:', fileBuffer.length, 'Type:', mimeType);
 
         // Upload to Supabase Storage
         const { data, error } = await supabase.storage
