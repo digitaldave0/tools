@@ -7,15 +7,62 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 600px;
+            max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
+        }
+        .main-content {
+            display: flex;
+            gap: 20px;
+        }
+        .left-panel {
+            flex: 1;
+        }
+        .right-panel {
+            flex: 1;
+            min-width: 400px;
         }
         .upload-section, .download-section, .cleanup-section {
             margin-bottom: 30px;
             padding: 20px;
             border: 1px solid #ddd;
             border-radius: 5px;
+        }
+        .files-section {
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .files-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        .files-table th, .files-table td {
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .files-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        .file-id {
+            font-family: monospace;
+            font-size: 12px;
+            color: #666;
+            word-break: break-all;
+        }
+        .copy-btn {
+            background: none;
+            border: none;
+            color: #007bff;
+            cursor: pointer;
+            text-decoration: underline;
+            font-size: 12px;
+        }
+        .copy-btn:hover {
+            color: #0056b3;
         }
         input[type="file"] {
             margin: 10px 0;
@@ -50,29 +97,56 @@
 <body>
     <h1>File Upload/Download API</h1>
 
-    <div class="upload-section">
-        <h2>Upload File</h2>
-        <form id="uploadForm">
-            <input type="file" id="fileInput" required>
-            <br>
-            <button type="submit">Upload</button>
-        </form>
-        <div id="uploadResult" class="result" style="display: none;"></div>
-    </div>
+    <div class="main-content">
+        <div class="left-panel">
+            <div class="upload-section">
+                <h2>Upload File</h2>
+                <form id="uploadForm">
+                    <input type="file" id="fileInput" required>
+                    <br>
+                    <button type="submit">Upload</button>
+                </form>
+                <div id="uploadResult" class="result" style="display: none;"></div>
+            </div>
 
-    <div class="download-section">
-        <h2>Download File</h2>
-        <input type="text" id="fileIdInput" placeholder="Enter File ID" required>
-        <br>
-        <button onclick="downloadFile()">Download</button>
-        <div id="downloadResult" class="result" style="display: none;"></div>
-    </div>
+            <div class="download-section">
+                <h2>Download File</h2>
+                <input type="text" id="fileIdInput" placeholder="Enter File ID" required>
+                <br>
+                <button onclick="downloadFile()">Download</button>
+                <div id="downloadResult" class="result" style="display: none;"></div>
+            </div>
 
-    <div class="cleanup-section">
-        <h2>Storage Management</h2>
-        <p>Files expire after 24 hours. Use cleanup to remove expired files.</p>
-        <button onclick="cleanupFiles()">Clean Up Expired Files</button>
-        <div id="cleanupResult" class="result" style="display: none;"></div>
+            <div class="cleanup-section">
+                <h2>Storage Management</h2>
+                <p>Files expire after 24 hours. Use cleanup to remove expired files.</p>
+                <button onclick="cleanupFiles()">Clean Up Expired Files</button>
+                <div id="cleanupResult" class="result" style="display: none;"></div>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="files-section">
+                <h2>Available Files</h2>
+                <button onclick="refreshFiles()">Refresh List</button>
+                <table class="files-table" id="filesTable">
+                    <thead>
+                        <tr>
+                            <th>File Name</th>
+                            <th>File ID</th>
+                            <th>Expires</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="filesTableBody">
+                        <tr>
+                            <td colspan="4">Loading files...</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div id="filesResult" class="result" style="display: none;"></div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -82,6 +156,8 @@
         const fileIdInput = document.getElementById('fileIdInput');
         const downloadResult = document.getElementById('downloadResult');
         const cleanupResult = document.getElementById('cleanupResult');
+        const filesTableBody = document.getElementById('filesTableBody');
+        const filesResult = document.getElementById('filesResult');
 
         uploadForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -169,6 +245,8 @@
                         ${result.message}<br>
                         Remaining files: ${result.remainingFiles}
                     `;
+                    // Refresh the file list after cleanup
+                    refreshFiles();
                 } else {
                     cleanupResult.className = 'result error';
                     cleanupResult.textContent = `Error: ${result.error}`;
@@ -179,6 +257,71 @@
                 cleanupResult.textContent = `Error: ${error.message}`;
             }
         }
+
+        async function refreshFiles() {
+            try {
+                filesTableBody.innerHTML = '<tr><td colspan="4">Loading files...</td></tr>';
+
+                const response = await fetch('/.netlify/functions/list-files');
+                const result = await response.json();
+
+                if (response.ok) {
+                    displayFiles(result.files);
+                    filesResult.style.display = 'none';
+                } else {
+                    filesTableBody.innerHTML = '<tr><td colspan="4">Error loading files</td></tr>';
+                    filesResult.style.display = 'block';
+                    filesResult.className = 'result error';
+                    filesResult.textContent = `Error: ${result.error}`;
+                }
+            } catch (error) {
+                filesTableBody.innerHTML = '<tr><td colspan="4">Error loading files</td></tr>';
+                filesResult.style.display = 'block';
+                filesResult.className = 'result error';
+                filesResult.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        function displayFiles(files) {
+            if (!files || files.length === 0) {
+                filesTableBody.innerHTML = '<tr><td colspan="4">No files found</td></tr>';
+                return;
+            }
+
+            filesTableBody.innerHTML = files.map(file => {
+                const expiresText = file.expiresAt ?
+                    (file.isExpired ? 'Expired' : new Date(file.expiresAt).toLocaleString()) :
+                    'Unknown';
+                const rowClass = file.isExpired ? 'style="opacity: 0.6;"' : '';
+
+                return `
+                    <tr ${rowClass}>
+                        <td>${file.fileName}</td>
+                        <td><span class="file-id">${file.fileId}</span></td>
+                        <td>${expiresText}</td>
+                        <td>
+                            <button class="copy-btn" onclick="copyToClipboard('${file.fileId}')">Copy ID</button>
+                            ${!file.isExpired ? `<button class="copy-btn" onclick="downloadFileById('${file.fileId}')">Download</button>` : ''}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                // Could add a temporary "Copied!" message here
+                console.log('File ID copied to clipboard');
+            });
+        }
+
+        function downloadFileById(fileId) {
+            document.getElementById('fileIdInput').value = fileId;
+            downloadFile();
+        }
+
+        // Load files when page loads
+        document.addEventListener('DOMContentLoaded', refreshFiles);
     </script>
 </body>
 </html>
