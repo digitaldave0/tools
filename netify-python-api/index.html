@@ -7,48 +7,51 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
-            font-family: 'Courier New', monospace;
-            background: #0a0a0a;
-            color: #00ff00;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
             margin: 0;
             padding: 20px;
             min-height: 100vh;
+            line-height: 1.6;
         }
         .main-content {
             display: flex;
             gap: 20px;
             align-items: flex-start;
+            max-width: 1200px;
+            margin: 0 auto;
         }
         .left-panel {
             flex: 1;
-            border: 2px solid #00ff00;
-            background: rgba(0, 255, 0, 0.05);
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
         }
         .right-panel {
             flex: 1;
             min-width: 400px;
             max-height: 100vh;
             overflow-y: auto;
-            border: 2px solid #00ff00;
-            background: rgba(0, 255, 0, 0.05);
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
         .upload-section, .download-section, .cleanup-section {
             margin-bottom: 20px;
             padding: 20px;
-            border: 1px solid #00ff00;
-            background: rgba(0, 20, 0, 0.8);
+            border-bottom: 1px solid #eee;
+        }
+        .upload-section:last-child, .download-section:last-child, .cleanup-section:last-child {
+            border-bottom: none;
         }
         .files-section {
             padding: 20px;
-            border: 1px solid #00ff00;
-            background: rgba(0, 20, 0, 0.8);
         }
         .chart-section {
             padding: 20px;
-            border: 1px solid #00ff00;
-            border-radius: 0;
-            margin-bottom: 20px;
-            background: rgba(0, 20, 0, 0.8);
+            border-bottom: 1px solid #eee;
             text-align: center;
             max-width: 300px;
             margin-left: auto;
@@ -56,164 +59,165 @@
         }
         .chart-section h3 {
             margin-top: 0;
-            color: #00ff00;
+            color: #333;
             font-size: 16px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            border-bottom: 1px solid #00ff00;
-            padding-bottom: 5px;
+            font-weight: 600;
+            margin-bottom: 15px;
         }
         .chart-container {
             position: relative;
             width: 200px;
             height: 200px;
             margin: 0 auto;
-            border: 1px solid #00ff00;
-            background: rgba(0, 0, 0, 0.5);
+            background: white;
+            border-radius: 4px;
         }
         .storage-info {
             margin-top: 10px;
             font-size: 12px;
-            color: #00ff00;
-            font-family: 'Courier New', monospace;
+            color: #666;
             text-align: center;
         }
         h1 {
             text-align: center;
-            color: #00ff00;
+            color: #2563eb;
             font-size: 28px;
-            text-transform: uppercase;
-            letter-spacing: 3px;
+            font-weight: 700;
             margin-bottom: 30px;
-            text-shadow: 0 0 10px #00ff00;
-            border-bottom: 2px solid #00ff00;
             padding-bottom: 10px;
         }
         h2 {
-            color: #00ff00;
+            color: #1f2937;
             font-size: 18px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
+            font-weight: 600;
             margin-bottom: 15px;
-            border-left: 4px solid #00ff00;
-            padding-left: 10px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e5e7eb;
         }
         input[type="file"], input[type="text"] {
-            background: #000;
-            border: 1px solid #00ff00;
-            color: #00ff00;
-            padding: 8px;
-            font-family: 'Courier New', monospace;
+            background: white;
+            border: 1px solid #d1d5db;
+            color: #333;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-family: inherit;
             width: 100%;
             margin-bottom: 10px;
+            transition: border-color 0.2s;
+        }
+        input[type="file"]:focus, input[type="text"]:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
         input[type="file"]::file-selector-button {
-            background: #00ff00;
-            color: #000;
+            background: #2563eb;
+            color: white;
             border: none;
             padding: 6px 12px;
+            border-radius: 4px;
             cursor: pointer;
-            font-family: 'Courier New', monospace;
-            text-transform: uppercase;
-            font-weight: bold;
+            font-family: inherit;
+            font-weight: 500;
+            margin-right: 8px;
+            transition: background-color 0.2s;
+        }
+        input[type="file"]::file-selector-button:hover {
+            background: #1d4ed8;
         }
         button {
-            background: #00ff00;
-            color: #000;
-            border: 2px solid #00ff00;
+            background: #2563eb;
+            color: white;
+            border: none;
             padding: 10px 20px;
-            font-family: 'Courier New', monospace;
-            text-transform: uppercase;
-            font-weight: bold;
-            letter-spacing: 1px;
+            border-radius: 4px;
+            font-family: inherit;
+            font-weight: 500;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: background-color 0.2s;
         }
         button:hover {
-            background: #000;
-            color: #00ff00;
-            box-shadow: 0 0 10px #00ff00;
+            background: #1d4ed8;
         }
         .result {
             margin-top: 10px;
-            padding: 10px;
-            border: 1px solid #00ff00;
-            background: rgba(0, 40, 0, 0.9);
-            font-family: 'Courier New', monospace;
+            padding: 12px;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 14px;
         }
         .error {
-            border-color: #ff4444;
-            background: rgba(40, 0, 0, 0.9);
-            color: #ff4444;
+            border: 1px solid #dc2626;
+            background: #fef2f2;
+            color: #dc2626;
         }
         .success {
-            border-color: #00ff00;
-            background: rgba(0, 40, 0, 0.9);
-            color: #00ff00;
+            border: 1px solid #16a34a;
+            background: #f0fdf4;
+            color: #16a34a;
         }
         .files-table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 10px;
-            border: 1px solid #00ff00;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
         }
         .files-table th, .files-table td {
             padding: 8px 12px;
             text-align: left;
-            border-bottom: 1px solid #00ff00;
-            border-right: 1px solid #00ff00;
+            border-bottom: 1px solid #e5e7eb;
         }
         .files-table th {
-            background: rgba(0, 255, 0, 0.1);
-            color: #00ff00;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            background: #f9fafb;
+            color: #374151;
+            font-weight: 600;
+            font-size: 14px;
         }
         .files-table tr:hover {
-            background: rgba(0, 255, 0, 0.05);
+            background: #f9fafb;
         }
         .file-id {
             font-family: 'Courier New', monospace;
             font-size: 12px;
-            color: #00ff00;
+            color: #6b7280;
             word-break: break-all;
+            background: #f3f4f6;
+            padding: 2px 4px;
+            border-radius: 3px;
         }
         .copy-btn {
-            background: none;
-            border: 1px solid #00ff00;
-            color: #00ff00;
+            background: #e5e7eb;
+            border: 1px solid #d1d5db;
+            color: #374151;
             cursor: pointer;
             text-decoration: none;
             font-size: 11px;
             padding: 4px 8px;
-            font-family: 'Courier New', monospace;
-            text-transform: uppercase;
+            border-radius: 3px;
+            font-family: inherit;
             margin-right: 5px;
-            transition: all 0.3s;
+            transition: background-color 0.2s;
         }
         .copy-btn:hover {
-            background: #00ff00;
-            color: #000;
-            box-shadow: 0 0 5px #00ff00;
+            background: #d1d5db;
         }
         p {
-            color: #00ff00;
-            font-size: 12px;
-            line-height: 1.4;
+            color: #6b7280;
+            font-size: 14px;
+            line-height: 1.5;
         }
         a {
-            color: #00ff00;
+            color: #2563eb;
             text-decoration: none;
-            border-bottom: 1px dotted #00ff00;
         }
         a:hover {
-            color: #ffffff;
-            border-bottom-color: #ffffff;
+            text-decoration: underline;
         }
         small {
-            font-size: 10px;
-            color: #00aa00;
+            font-size: 12px;
+            color: #9ca3af;
         }
 
         /* Mobile Responsive Design */
@@ -225,13 +229,11 @@
 
             h1 {
                 font-size: 24px;
-                letter-spacing: 2px;
                 margin-bottom: 20px;
             }
 
             h2 {
                 font-size: 16px;
-                letter-spacing: 1px;
             }
 
             .main-content {
@@ -270,14 +272,14 @@
 
             button {
                 padding: 12px 16px;
-                font-size: 12px;
+                font-size: 14px;
                 width: 100%;
                 margin-bottom: 8px;
             }
 
             .copy-btn {
                 padding: 6px 10px;
-                font-size: 10px;
+                font-size: 12px;
                 margin-right: 3px;
                 margin-bottom: 3px;
                 display: inline-block;
@@ -291,7 +293,7 @@
             }
 
             .files-table {
-                font-size: 12px;
+                font-size: 14px;
                 overflow-x: auto;
                 display: block;
                 white-space: nowrap;
@@ -309,10 +311,12 @@
             /* Mobile table improvements */
             .files-table tbody tr {
                 display: block;
-                border: 1px solid #00ff00;
+                border: 1px solid #e5e7eb;
                 margin-bottom: 10px;
                 padding: 8px;
-                background: rgba(0, 20, 0, 0.8);
+                background: white;
+                border-radius: 4px;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             }
 
             .files-table thead {
@@ -332,16 +336,15 @@
                 content: attr(data-label);
                 position: absolute;
                 left: 8px;
-                font-weight: bold;
-                text-transform: uppercase;
-                font-size: 10px;
-                color: #00ff00;
+                font-weight: 600;
+                font-size: 12px;
+                color: #6b7280;
             }
 
-            .files-table tbody td:nth-child(1):before { content: "FILE NAME"; }
-            .files-table tbody td:nth-child(2):before { content: "FILE ID"; }
-            .files-table tbody td:nth-child(3):before { content: "EXPIRATION"; }
-            .files-table tbody td:nth-child(4):before { content: "OPERATIONS"; }
+            .files-table tbody td:nth-child(1):before { content: "File Name"; }
+            .files-table tbody td:nth-child(2):before { content: "File ID"; }
+            .files-table tbody td:nth-child(3):before { content: "Expires"; }
+            .files-table tbody td:nth-child(4):before { content: "Actions"; }
 
             .files-table tbody td:nth-child(4) {
                 text-align: center;
@@ -354,13 +357,13 @@
 
             .result {
                 padding: 8px;
-                font-size: 12px;
+                font-size: 14px;
                 word-wrap: break-word;
             }
 
             p {
-                font-size: 11px;
-                line-height: 1.3;
+                font-size: 13px;
+                line-height: 1.4;
             }
         }
 
@@ -371,7 +374,6 @@
 
             h1 {
                 font-size: 20px;
-                letter-spacing: 1px;
             }
 
             .chart-container {
@@ -381,23 +383,23 @@
 
             .files-table th, .files-table td {
                 padding: 4px 6px;
-                font-size: 11px;
+                font-size: 13px;
             }
 
             button {
                 padding: 10px 12px;
-                font-size: 11px;
+                font-size: 13px;
             }
 
             .copy-btn {
                 padding: 4px 8px;
-                font-size: 9px;
+                font-size: 11px;
             }
         }
     </style>
 </head>
 <body>
-    <h1>SECURE FILE TRANSFER TERMINAL</h1>
+    <h1>File Upload/Download API</h1>
 
     <div class="main-content">
         <div class="left-panel">
@@ -409,33 +411,33 @@
                 <form id="uploadForm">
                     <input type="file" id="fileInput" required>
                     <br>
-                            <button id="uploadBtn">INITIATE SECURE UPLOAD</button>
+                            <button id="uploadBtn">Upload File</button>
                 </form>
                 <div id="uploadResult" class="result" style="display: none;"></div>
             </div>
 
             <div class="download-section">
-                <h2>SECURE FILE RETRIEVAL</h2>
+                <h2>Download File (Decrypted)</h2>
                 <p style="font-size: 14px; color: #666; margin-bottom: 10px;">
                     Files are decrypted client-side. You'll need the encryption key to download.
                 </p>
                 <input type="text" id="fileIdInput" placeholder="Enter File ID" required>
                 <br>
-                                <button onclick="downloadFile()">EXECUTE DECRYPTION & DOWNLOAD</button>
+                                <button onclick="downloadFile()">Download File</button>
                 <div id="downloadResult" class="result" style="display: none;"></div>
             </div>
 
             <div class="cleanup-section">
-                <h2>STORAGE MANAGEMENT CONSOLE</h2>
-                    <p>Military-grade encrypted file sharing with automatic expiration and storage monitoring</p>
-                <button onclick="cleanupFiles()">INITIATE CLEANUP PROTOCOL</button>
+                <h2>Storage Management</h2>
+                    <p>Secure file sharing with automatic expiration and storage monitoring</p>
+                <button onclick="cleanupFiles()">Clean Up Expired Files</button>
                 <div id="cleanupResult" class="result" style="display: none;"></div>
             </div>
         </div>
 
         <div class="right-panel">
             <div class="chart-section">
-                <h3>STORAGE UTILIZATION MATRIX</h3>
+                <h3>Storage Usage (500MB Free)</h3>
                 <div class="chart-container">
                     <canvas id="storageChart"></canvas>
                 </div>
@@ -443,15 +445,15 @@
             </div>
 
             <div class="files-section">
-                <h2>ACTIVE FILES DATABASE</h2>
-                <button onclick="refreshFiles()">REFRESH INTEL</button>
+                <h2>Available Files</h2>
+                <button onclick="refreshFiles()">Refresh List</button>
                 <table class="files-table" id="filesTable">
                     <thead>
                         <tr>
-                            <th>FILE NAME</th>
-                            <th>FILE ID</th>
-                            <th>EXPIRATION</th>
-                            <th>OPERATIONS</th>
+                            <th>File Name</th>
+                            <th>File ID</th>
+                            <th>Expires</th>
+                            <th>Action</th>
                         </tr>
                     </thead>
                     <tbody id="filesTableBody">
@@ -729,12 +731,12 @@
 
                 return `
                     <tr ${rowClass}>
-                        <td data-label="FILE NAME">${file.fileName.replace('.encrypted', '')} <small style="color: #666;">(encrypted)</small></td>
-                        <td data-label="FILE ID"><span class="file-id">${file.fileId}</span></td>
-                        <td data-label="EXPIRATION">${expiresText}</td>
-                        <td data-label="OPERATIONS">
-                            <button class="copy-btn" onclick="copyToClipboard('${file.fileId}')">COPY ID</button>
-                            ${!file.isExpired ? `<button class="copy-btn" onclick="downloadFileById('${file.fileId}')">RETRIEVE</button>` : ''}
+                        <td data-label="File Name">${file.fileName.replace('.encrypted', '')} <small style="color: #666;">(encrypted)</small></td>
+                        <td data-label="File ID"><span class="file-id">${file.fileId}</span></td>
+                        <td data-label="Expires">${expiresText}</td>
+                        <td data-label="Actions">
+                            <button class="copy-btn" onclick="copyToClipboard('${file.fileId}')">Copy ID</button>
+                            ${!file.isExpired ? `<button class="copy-btn" onclick="downloadFileById('${file.fileId}')">Download</button>` : ''}
                         </td>
                     </tr>
                 `;
