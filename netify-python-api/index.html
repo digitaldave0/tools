@@ -130,20 +130,26 @@
     <div class="main-content">
         <div class="left-panel">
             <div class="upload-section">
-                <h2>Upload File</h2>
+                <h2>Upload File (Encrypted)</h2>
+                <p style="font-size: 14px; color: #666; margin-bottom: 10px;">
+                    Files are encrypted client-side with AES-256-GCM before upload. Keep the encryption key safe!
+                </p>
                 <form id="uploadForm">
                     <input type="file" id="fileInput" required>
                     <br>
-                    <button type="submit">Upload</button>
+                    <button type="submit">Encrypt & Upload</button>
                 </form>
                 <div id="uploadResult" class="result" style="display: none;"></div>
             </div>
 
             <div class="download-section">
-                <h2>Download File</h2>
+                <h2>Download File (Decrypted)</h2>
+                <p style="font-size: 14px; color: #666; margin-bottom: 10px;">
+                    Files are decrypted client-side. You'll need the encryption key to download.
+                </p>
                 <input type="text" id="fileIdInput" placeholder="Enter File ID" required>
                 <br>
-                <button onclick="downloadFile()">Download</button>
+                <button onclick="downloadFile()">Decrypt & Download</button>
                 <div id="downloadResult" class="result" style="display: none;"></div>
             </div>
 
@@ -200,29 +206,102 @@
 
         let storageChart;
 
+        // Encryption utilities
+        async function generateEncryptionKey() {
+            return await crypto.subtle.generateKey(
+                { name: 'AES-GCM', length: 256 },
+                true,
+                ['encrypt', 'decrypt']
+            );
+        }
+
+        async function encryptFile(file, key) {
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const fileBuffer = await file.arrayBuffer();
+
+            const encrypted = await crypto.subtle.encrypt(
+                { name: 'AES-GCM', iv: iv },
+                key,
+                fileBuffer
+            );
+
+            // Combine IV and encrypted data
+            const combined = new Uint8Array(iv.length + encrypted.byteLength);
+            combined.set(iv);
+            combined.set(new Uint8Array(encrypted), iv.length);
+
+            return combined;
+        }
+
+        async function decryptFile(encryptedData, key) {
+            const iv = encryptedData.slice(0, 12);
+            const encrypted = encryptedData.slice(12);
+
+            const decrypted = await crypto.subtle.decrypt(
+                { name: 'AES-GCM', iv: iv },
+                key,
+                encrypted
+            );
+
+            return decrypted;
+        }
+
+        async function keyToString(key) {
+            const exported = await crypto.subtle.exportKey('raw', key);
+            return btoa(String.fromCharCode(...new Uint8Array(exported)));
+        }
+
+        async function stringToKey(keyString) {
+            const keyData = Uint8Array.from(atob(keyString), c => c.charCodeAt(0));
+            return await crypto.subtle.importKey(
+                'raw',
+                keyData,
+                { name: 'AES-GCM', length: 256 },
+                false,
+                ['encrypt', 'decrypt']
+            );
+        }
+
         uploadForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const file = fileInput.files[0];
             if (!file) return;
 
-            const formData = new FormData();
-            formData.append('file', file);
+            uploadResult.style.display = 'block';
+            uploadResult.className = 'result';
+            uploadResult.textContent = 'Encrypting and uploading file...';
 
             try {
+                // Generate encryption key
+                const encryptionKey = await generateEncryptionKey();
+                const keyString = await keyToString(encryptionKey);
+
+                // Encrypt the file
+                const encryptedData = await encryptFile(file, encryptionKey);
+
+                // Create encrypted file blob
+                const encryptedBlob = new Blob([encryptedData], { type: 'application/octet-stream' });
+                const encryptedFile = new File([encryptedBlob], file.name + '.encrypted', { type: 'application/octet-stream' });
+
+                // Upload encrypted file
+                const formData = new FormData();
+                formData.append('file', encryptedFile);
+
                 const response = await fetch('/.netlify/functions/upload', {
                     method: 'POST',
                     body: formData
                 });
 
                 const result = await response.json();
-                uploadResult.style.display = 'block';
                 if (response.ok) {
                     uploadResult.className = 'result success';
                     uploadResult.innerHTML = `
                         <strong>Upload successful!</strong><br>
                         File ID: ${result.fileId}<br>
+                        <strong>Encryption Key: ${keyString}</strong><br>
+                        <span style="color: #dc3545; font-size: 12px;">⚠️ Keep this key safe! It's required to decrypt the file.</span><br>
                         Expires: 24 hours from now<br>
-                        <a href="${result.downloadUrl}" target="_blank">Direct Download Link</a>
+                        <a href="${result.downloadUrl}?key=${encodeURIComponent(keyString)}" target="_blank">Encrypted Download Link</a>
                     `;
                     // Refresh file list and storage stats
                     refreshFiles();
@@ -232,9 +311,8 @@
                     uploadResult.textContent = `Error: ${result.error}`;
                 }
             } catch (error) {
-                uploadResult.style.display = 'block';
                 uploadResult.className = 'result error';
-                uploadResult.textContent = `Error: ${error.message}`;
+                uploadResult.textContent = `Encryption/Upload failed: ${error.message}`;
             }
         });
 
@@ -247,28 +325,66 @@
                 return;
             }
 
+            downloadResult.style.display = 'block';
+            downloadResult.className = 'result';
+            downloadResult.textContent = 'Downloading and decrypting file...';
+
             try {
                 const response = await fetch(`/.netlify/functions/download?fileId=${encodeURIComponent(fileId)}`);
                 const result = await response.json();
 
-                downloadResult.style.display = 'block';
                 if (response.ok) {
-                    downloadResult.className = 'result success';
-                    const expiresText = result.expiresAt ?
-                        `Expires: ${new Date(result.expiresAt).toLocaleString()}` :
-                        'Expiration: Unknown';
-                    downloadResult.innerHTML = `
-                        <strong>Download ready!</strong><br>
-                        File: ${result.fileName}<br>
-                        ${expiresText}<br>
-                        <a href="${result.downloadUrl}" target="_blank" download>Download File</a>
-                    `;
+                    // Get encryption key from URL or prompt user
+                    const urlParams = new URLSearchParams(window.location.search);
+                    let keyString = urlParams.get('key');
+
+                    if (!keyString) {
+                        // Prompt user for encryption key
+                        keyString = prompt('Enter the encryption key for this file:');
+                        if (!keyString) {
+                            downloadResult.className = 'result error';
+                            downloadResult.textContent = 'Encryption key required for decryption';
+                            return;
+                        }
+                    }
+
+                    try {
+                        // Decrypt the file
+                        const encryptionKey = await stringToKey(keyString);
+                        const encryptedResponse = await fetch(result.downloadUrl);
+                        const encryptedData = new Uint8Array(await encryptedResponse.arrayBuffer());
+
+                        const decryptedData = await decryptFile(encryptedData, encryptionKey);
+
+                        // Create download link for decrypted file
+                        const blob = new Blob([decryptedData]);
+                        const downloadUrl = URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = downloadUrl;
+                        link.download = result.fileName.replace('.encrypted', ''); // Remove .encrypted extension
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        URL.revokeObjectURL(downloadUrl);
+
+                        const expiresText = result.expiresAt ?
+                            `Expires: ${new Date(result.expiresAt).toLocaleString()}` :
+                            'Expiration: Unknown';
+                        downloadResult.className = 'result success';
+                        downloadResult.innerHTML = `
+                            <strong>Download successful!</strong><br>
+                            File: ${result.fileName.replace('.encrypted', '')}<br>
+                            ${expiresText}
+                        `;
+                    } catch (decryptError) {
+                        downloadResult.className = 'result error';
+                        downloadResult.textContent = `Decryption failed: Invalid encryption key`;
+                    }
                 } else {
                     downloadResult.className = 'result error';
                     downloadResult.textContent = `Error: ${result.error}`;
                 }
             } catch (error) {
-                downloadResult.style.display = 'block';
                 downloadResult.className = 'result error';
                 downloadResult.textContent = `Error: ${error.message}`;
             }
@@ -341,7 +457,7 @@
 
                 return `
                     <tr ${rowClass}>
-                        <td>${file.fileName}</td>
+                        <td>${file.fileName.replace('.encrypted', '')} <small style="color: #666;">(encrypted)</small></td>
                         <td><span class="file-id">${file.fileId}</span></td>
                         <td>${expiresText}</td>
                         <td>
@@ -362,6 +478,10 @@
 
         function downloadFileById(fileId) {
             document.getElementById('fileIdInput').value = fileId;
+            // Clear any existing key from URL
+            const url = new URL(window.location);
+            url.searchParams.delete('key');
+            window.history.replaceState({}, '', url);
             downloadFile();
         }
 
