@@ -2,7 +2,11 @@
   "name": "netlify-python-api",
   "version": "1.0.0",
   "description": "Serverless API for temporary data storage",
+  "scripts": {
+    "build": "echo 'No build step required'"
+  },
   "dependencies": {
-    "firebase-admin": "^11.10.1"
+    "firebase-admin": "^12.0.0",
+    "busboy": "^1.6.0"
   }
 }

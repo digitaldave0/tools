@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Upload/Download API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .upload-section, .download-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        input[type="file"] {
+            margin: 10px 0;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+    </style>
+</head>
+<body>
+    <h1>File Upload/Download API</h1>
+
+    <div class="upload-section">
+        <h2>Upload File</h2>
+        <form id="uploadForm">
+            <input type="file" id="fileInput" required>
+            <br>
+            <button type="submit">Upload</button>
+        </form>
+        <div id="uploadResult" class="result" style="display: none;"></div>
+    </div>
+
+    <div class="download-section">
+        <h2>Download File</h2>
+        <input type="text" id="fileIdInput" placeholder="Enter File ID" required>
+        <br>
+        <button onclick="downloadFile()">Download</button>
+        <div id="downloadResult" class="result" style="display: none;"></div>
+    </div>
+
+    <script>
+        const uploadForm = document.getElementById('uploadForm');
+        const fileInput = document.getElementById('fileInput');
+        const uploadResult = document.getElementById('uploadResult');
+        const fileIdInput = document.getElementById('fileIdInput');
+        const downloadResult = document.getElementById('downloadResult');
+
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/.netlify/functions/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                uploadResult.style.display = 'block';
+                if (response.ok) {
+                    uploadResult.className = 'result success';
+                    uploadResult.innerHTML = `
+                        <strong>Upload successful!</strong><br>
+                        File ID: ${result.fileId}<br>
+                        <a href="${result.downloadUrl}" target="_blank">Direct Download Link</a>
+                    `;
+                } else {
+                    uploadResult.className = 'result error';
+                    uploadResult.textContent = `Error: ${result.error}`;
+                }
+            } catch (error) {
+                uploadResult.style.display = 'block';
+                uploadResult.className = 'result error';
+                uploadResult.textContent = `Error: ${error.message}`;
+            }
+        });
+
+        async function downloadFile() {
+            const fileId = fileIdInput.value.trim();
+            if (!fileId) {
+                downloadResult.style.display = 'block';
+                downloadResult.className = 'result error';
+                downloadResult.textContent = 'Please enter a File ID';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/.netlify/functions/download?fileId=${encodeURIComponent(fileId)}`);
+                const result = await response.json();
+
+                downloadResult.style.display = 'block';
+                if (response.ok) {
+                    downloadResult.className = 'result success';
+                    downloadResult.innerHTML = `
+                        <strong>Download ready!</strong><br>
+                        File: ${result.fileName}<br>
+                        <a href="${result.downloadUrl}" target="_blank" download>Download File</a>
+                    `;
+                } else {
+                    downloadResult.className = 'result error';
+                    downloadResult.textContent = `Error: ${result.error}`;
+                }
+            } catch (error) {
+                downloadResult.style.display = 'block';
+                downloadResult.className = 'result error';
+                downloadResult.textContent = `Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
